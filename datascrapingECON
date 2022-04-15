@@ -1,0 +1,80 @@
+try:
+    import urllib.request as urllib2
+except ImportError:
+    import urllib2
+import csv
+import re
+#from types import NoneType
+from bs4 import BeautifulSoup
+from bs4 import NavigableString
+ 
+rank_page = 'https://www.transfermarkt.us/premier-league/transfers/wettbewerb/GB1/plus/?saison_id=2021&s_w=&leihe=0&intern=0'
+request = urllib2.Request(rank_page, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.109 Safari/537.36'})
+page = urllib2.urlopen(request)
+soup = BeautifulSoup(page, 'html.parser')
+ 
+file = open('PLtransfer20_21.csv', 'w')
+writer = csv.writer(file)
+
+NoneType= type(None)
+
+#write title row
+writer.writerow(['In/Out','Name', 'Age', 'MarketValue' ,'DestClub', 'DestCountry', 'ClubLeft', 'CountryLeft' 'TransferFee'])
+
+for table in soup.find_all('div', class_="responsive-table"):
+    #getting the table rows
+    trs= table.tbody.contents
+    #print(trs)
+    #print()
+    #iterating over the 2nd to last rows (skipping header)
+    for tr in trs[1:]:
+        #print(tr)
+        inOut= table.table.thead.find("th", class_="spieler-transfer-cell").text
+
+        name= tr.find('a')
+        if isinstance(name, int):
+            continue
+        #name= tr.find('a')
+        # print(name.text)
+        # print()
+        age = tr.find('td', class_="zentriert alter-transfer-cell").text.strip()
+        marketValue = tr.find('td', class_="rechts mw-transfer-cell").text.strip()
+
+        transferFee= tr.find_all('a')[-1].text
+
+        if(inOut=="In"):
+            destClub= table.parent.find('h2').a.text
+            destCountry= "England"
+            clubLeft_intermediate= tr.find('td', class_="no-border-links verein-flagge-transfer-cell").a
+
+            if isinstance(clubLeft_intermediate, NoneType):
+                continue
+
+            clubLeft= clubLeft_intermediate.text
+            countryLeft_inter= tr.find('td', class_="no-border-links verein-flagge-transfer-cell").find('img')
+            if isinstance(countryLeft_inter, type(None)):
+                countryLeft="N/A"
+            else:
+                countryLeft= countryLeft_inter['alt']
+
+        else:
+            destClub= tr.find('td', class_="no-border-links verein-flagge-transfer-cell").a
+            if isinstance(destClub, NoneType):
+                continue
+            destClub=destClub.text
+            destCountry= tr.find('td', class_="no-border-links verein-flagge-transfer-cell").find('img') 
+            if isinstance(destCountry, type(None)):
+                destCountry="N/A"
+            else:
+                destCountry= destCountry['alt']
+            clubLeft=table.parent.find('h2').a.text
+            countryLeft= 'England'
+
+
+        print(inOut + ' | ' + name.text + ' | ' + age + " | " + marketValue + "|"+transferFee+ "|"+ destClub +"|"+destCountry+"|"+clubLeft+"|"+countryLeft)
+        #writer.writerow([inOut.encode('utf-8'),name.text.encode('utf-8'), age.encode('utf-8'), marketValue.encode('utf-8'),transferFee.encode('utf-8'), destClub.encode('utf-8'), destCountry.encode('utf-8'), clubLeft.encode('utf-8'), countryLeft.encode('utf-8')])
+        writer.writerow([inOut,name.text, age, marketValue,transferFee, destClub, destCountry, clubLeft, countryLeft])
+
+#next steps:
+# iterate through the pages in the PL and other leagues over the last 10 seasons
+# create an array like years=['10_11', '11_12', ..., '20_21'] and use .format(years[i])
